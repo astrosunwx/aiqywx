@@ -98,5 +98,9 @@ psql -U postgres -d customer_system -f customer-system/customer-system/backend/i
 
 ---
 
+cd "g:\aiqywx\customer-system\customer-system\frontend"; npm run dev
+==========
+
+
 **版本**: v2.0.0  
 **更新时间**: 2026-02-02
