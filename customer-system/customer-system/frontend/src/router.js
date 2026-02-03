@@ -8,6 +8,7 @@ import TemplateMessageManager from './views/TemplateMessageManager.vue'
 import TemplateManager from './views/TemplateManager.vue'
 import AIModelManager from './views/AIModelManager.vue'
 import ProjectDetail from './views/ProjectDetail.vue'
+import DataSourceManager from './views/DataSourceManager.vue'
 
 const routes = [
   {
@@ -75,6 +76,14 @@ const routes = [
     component: ProjectDetail,
     meta: {
       title: '工单详情'
+    }
+  },
+  {
+    path: '/datasource',
+    name: 'DataSourceManager',
+    component: DataSourceManager,
+    meta: {
+      title: '数据源管理'
     }
   }
 ]

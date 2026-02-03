@@ -30,17 +30,17 @@ async def init_config():
                 "is_active": True
             },
             {
-                "group_code": "ai",
-                "group_name": "AI模型配置",
-                "description": "配置智能问答使用的AI模型",
-                "icon": "MagicStick",
+                "group_code": "wechat_official",
+                "group_name": "微信公众号配置",
+                "description": "微信公众号对接配置（可选）",
+                "icon": "Message",
                 "sort_order": 2,
                 "is_active": True
             },
             {
                 "group_code": "database",
-                "group_name": "数据库配置",
-                "description": "数据库连接信息（可选）",
+                "group_name": "本地数据库配置",
+                "description": "本地数据库连接信息(可选)",
                 "icon": "Coin",
                 "sort_order": 3,
                 "is_active": True
@@ -119,45 +119,67 @@ async def init_config():
             }
         ]
         
-        # AI配置项
-        ai_group = next(g for g in groups if g.group_code == "ai")
-        ai_configs = [
+        # 微信公众号配置项
+        wechat_official_group = next(g for g in groups if g.group_code == "wechat_official")
+        wechat_official_configs = [
             {
-                "group_id": ai_group.id,
-                "config_key": "ai_provider",
-                "config_value": "openai",
-                "config_type": "select",
-                "display_name": "AI提供商",
-                "description": "选择AI服务提供商：openai, azure, 通义千问",
-                "is_required": True,
+                "group_id": wechat_official_group.id,
+                "config_key": "wechat_appid",
+                "config_value": "",
+                "config_type": "string",
+                "display_name": "AppID",
+                "description": "微信公众号的AppID",
+                "is_required": False,
                 "is_sensitive": False,
                 "sort_order": 1
             },
             {
-                "group_id": ai_group.id,
-                "config_key": "ai_api_key",
+                "group_id": wechat_official_group.id,
+                "config_key": "wechat_appsecret",
                 "config_value": "",
                 "config_type": "password",
-                "display_name": "API密钥",
-                "description": "AI服务的API密钥",
-                "is_required": True,
+                "display_name": "AppSecret",
+                "description": "微信公众号的AppSecret",
+                "is_required": False,
                 "is_sensitive": True,
                 "sort_order": 2
             },
             {
-                "group_id": ai_group.id,
-                "config_key": "ai_model",
-                "config_value": "gpt-3.5-turbo",
+                "group_id": wechat_official_group.id,
+                "config_key": "wechat_token",
+                "config_value": "",
                 "config_type": "string",
-                "display_name": "模型名称",
-                "description": "使用的模型，如：gpt-3.5-turbo",
-                "is_required": True,
+                "display_name": "Token",
+                "description": "微信公众号服务器配置的Token",
+                "is_required": False,
                 "is_sensitive": False,
                 "sort_order": 3
+            },
+            {
+                "group_id": wechat_official_group.id,
+                "config_key": "wechat_encoding_aes_key",
+                "config_value": "",
+                "config_type": "password",
+                "display_name": "EncodingAESKey",
+                "description": "消息加解密密钥（可选）",
+                "is_required": False,
+                "is_sensitive": True,
+                "sort_order": 4
+            },
+            {
+                "group_id": wechat_official_group.id,
+                "config_key": "wechat_server_url",
+                "config_value": "",
+                "config_type": "string",
+                "display_name": "服务器地址(URL)",
+                "description": "配置到微信公众平台的服务器URL，例如: https://yourdomain.com/api/wechat/official",
+                "is_required": False,
+                "is_sensitive": False,
+                "sort_order": 5
             }
         ]
         
-        # 数据库配置项
+        # 本地数据库配置项
         db_group = next(g for g in groups if g.group_code == "database")
         db_configs = [
             {
@@ -185,7 +207,7 @@ async def init_config():
         ]
         
         # 添加所有配置项
-        all_configs = wework_configs + ai_configs + db_configs
+        all_configs = wework_configs + wechat_official_configs + db_configs
         for config_data in all_configs:
             config = EnhancedSystemConfig(**config_data)
             session.add(config)

@@ -11,14 +11,14 @@ async_session_maker = async_sessionmaker(engine, class_=AsyncSession, expire_on_
 
 Base = declarative_base()
 
-# 初始化 Redis 客户端（可选，用于缓存和消息追踪）
+# Initialize Redis client (optional, for caching and message tracking)
 try:
     redis_url = os.getenv("REDIS_URL", "redis://localhost:6379/0")
     redis_client = redis.from_url(redis_url, decode_responses=True)
     redis_client.ping()
-    print("✅ Redis 连接成功")
+    print("Redis connection successful")
 except Exception as e:
-    print(f"⚠️  Redis连接失败，缓存功能不可用: {e}")
+    print(f"Redis connection failed, caching unavailable: {e}")
     redis_client = None
 
 async def get_db():

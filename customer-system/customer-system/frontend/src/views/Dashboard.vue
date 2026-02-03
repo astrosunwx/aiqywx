@@ -32,7 +32,7 @@
           <ul class="feature-list">
             <li>企业微信配置</li>
             <li>AI服务配置</li>
-            <li>数据库配置</li>
+            <li>📡 消息渠道配置</li>
             <li>权限管理</li>
           </ul>
           <el-button type="primary" style="width: 100%; margin-top: 10px;">
@@ -47,17 +47,19 @@
           <div class="nav-icon" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);">
             <i class="el-icon-message" style="font-size: 40px;"></i>
           </div>
-          <h3>📨 消息系统（模板版）</h3>
+          <h3>📨 消息模板管理</h3>
           <p>统一消息模板管理</p>
           <ul class="feature-list">
             <li>📝 模板管理</li>
             <li>📋 消息记录</li>
-            <li>⚙️ 渠道配置</li>
             <li>📊 统计分析</li>
           </ul>
           <el-button type="danger" style="width: 100%; margin-top: 10px;">
-            进入消息系统
+            管理模板
           </el-button>
+          <p style="margin-top: 10px; font-size: 12px; color: #909399;">
+            💡 渠道配置请前往 <el-link @click.stop="navigateTo('/config')" type="primary">配置中心</el-link>
+          </p>
         </el-card>
       </el-col>
 

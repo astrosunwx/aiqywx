@@ -11,6 +11,10 @@
             <el-icon><Setting /></el-icon>
             <span>配置概览</span>
           </el-menu-item>
+          <el-menu-item index="channels">
+            <el-icon><Message /></el-icon>
+            <span>消息渠道</span>
+          </el-menu-item>
           <el-menu-item index="webhooks">
             <el-icon><ChatLineRound /></el-icon>
             <span>群机器人</span>
@@ -102,20 +106,203 @@
                   <span class="config-hint">{{ config.description }}</span>
                 </el-form-item>
 
-                <!-- 自动生成回调URL -->
+                <!-- 企业微信回调URL -->
                 <el-form-item 
-                  v-if="group.group_code === 'message'" 
-                  label="接收消息服务器URL"
+                  v-if="group.group_code === 'wework'" 
+                  label="企业微信接收消息URL"
                 >
-                  <el-input :value="callbackUrl" disabled>
+                  <el-input :value="callbackUrls.wework_callback_url" disabled>
                     <template #append>
-                      <el-button @click="copyToClipboard(callbackUrl)">复制</el-button>
+                      <el-button @click="copyToClipboard(callbackUrls.wework_callback_url)">复制</el-button>
                     </template>
                   </el-input>
-                  <span class="config-hint">将此URL配置到企业微信应用中</span>
+                  <span class="config-hint">将此URL配置到企业微信应用的接收消息服务器中</span>
+                </el-form-item>
+
+                <!-- 微信公众号服务器URL -->
+                <el-form-item 
+                  v-if="group.group_code === 'wechat_official'" 
+                  label="服务器地址(URL)"
+                >
+                  <el-input :value="callbackUrls.wechat_official_url" disabled>
+                    <template #append>
+                      <el-button @click="copyToClipboard(callbackUrls.wechat_official_url)">复制</el-button>
+                    </template>
+                  </el-input>
+                  <span class="config-hint">将此URL配置到微信公众平台的基本配置中</span>
                 </el-form-item>
               </el-form>
             </div>
+          </div>
+
+          <!-- 消息渠道配置 -->
+          <div v-if="activeMenu === 'channels'" class="channels-config">
+            <el-alert
+              title="消息渠道管理"
+              type="info"
+              description="统一管理所有消息发送渠道的配置和状态"
+              :closable="false"
+              style="margin-bottom: 20px;"
+            />
+
+            <el-row :gutter="20" style="margin-bottom: 20px;">
+              <el-col :span="6">
+                <el-statistic title="总渠道数" :value="channelStats.total_channels || 0" />
+              </el-col>
+              <el-col :span="6">
+                <el-statistic title="已启用" :value="channelStats.enabled_channels || 0">
+                  <template #suffix>
+                    <el-icon color="#67c23a"><CircleCheck /></el-icon>
+                  </template>
+                </el-statistic>
+              </el-col>
+              <el-col :span="6">
+                <el-statistic title="已禁用" :value="channelStats.disabled_channels || 0">
+                  <template #suffix>
+                    <el-icon color="#909399"><CircleClose /></el-icon>
+                  </template>
+                </el-statistic>
+              </el-col>
+              <el-col :span="6">
+                <el-button type="primary" @click="refreshChannels" style="margin-top: 20px;">
+                  <el-icon><Refresh /></el-icon>
+                  刷新
+                </el-button>
+              </el-col>
+            </el-row>
+
+            <el-table :data="channels" style="width: 100%">
+              <el-table-column prop="channel_name" label="渠道名称" width="200">
+                <template #default="scope">
+                  <el-tag :type="getChannelTagType(scope.row.channel_type)">
+                    {{ scope.row.channel_name }}
+                  </el-tag>
+                </template>
+              </el-table-column>
+              <el-table-column prop="channel_type" label="渠道类型" width="150" />
+              <el-table-column label="状态" width="100">
+                <template #default="scope">
+                  <el-switch 
+                    v-model="scope.row.is_enabled" 
+                    @change="toggleChannel(scope.row)"
+                  />
+                </template>
+              </el-table-column>
+              <el-table-column label="配置状态" width="120">
+                <template #default="scope">
+                  <el-tag v-if="isChannelConfigured(scope.row)" type="success">已配置</el-tag>
+                  <el-tag v-else type="warning">待配置</el-tag>
+                </template>
+              </el-table-column>
+              <el-table-column label="操作" width="180">
+                <template #default="scope">
+                  <el-button size="small" @click="configureChannel(scope.row)">
+                    <el-icon><Setting /></el-icon>
+                    配置
+                  </el-button>
+                  <el-button size="small" type="primary" @click="testChannel(scope.row)">
+                    <el-icon><Connection /></el-icon>
+                    测试
+                  </el-button>
+                </template>
+              </el-table-column>
+            </el-table>
+
+            <!-- 渠道配置对话框 -->
+            <el-dialog 
+              v-model="showChannelDialog" 
+              :title="`配置 ${currentChannel?.channel_name || ''}`"
+              width="700px"
+            >
+              <el-form :model="channelForm" label-width="140px">
+                <el-form-item label="渠道名称">
+                  <el-input v-model="channelForm.channel_name" />
+                </el-form-item>
+                <el-form-item label="启用状态">
+                  <el-switch v-model="channelForm.is_enabled" />
+                </el-form-item>
+
+                <!-- 动态配置项 -->
+                <el-divider>渠道专属配置</el-divider>
+                <div v-if="channelForm.channel_type === 'GROUP_BOT'">
+                  <el-form-item label="Webhook URL">
+                    <el-input v-model="channelForm.config_data.webhook_url" type="textarea" :rows="2" />
+                  </el-form-item>
+                  <el-form-item label="@提及设置">
+                    <el-select v-model="channelForm.config_data.mention_type" placeholder="选择@方式">
+                      <el-option label="不@任何人" value="none" />
+                      <el-option label="@所有人" value="all" />
+                      <el-option label="@指定成员" value="specific" />
+                    </el-select>
+                  </el-form-item>
+                </div>
+
+                <div v-else-if="channelForm.channel_type === 'AI'">
+                  <el-form-item label="AI模型">
+                    <el-select v-model="channelForm.config_data.model_id">
+                      <el-option label="GPT-4" value="gpt-4" />
+                      <el-option label="GPT-3.5" value="gpt-3.5-turbo" />
+                    </el-select>
+                  </el-form-item>
+                  <el-form-item label="温度参数">
+                    <el-slider v-model="channelForm.config_data.temperature" :min="0" :max="2" :step="0.1" show-input />
+                  </el-form-item>
+                </div>
+
+                <div v-else-if="channelForm.channel_type === 'WORK_WECHAT'">
+                  <el-form-item label="Corp ID">
+                    <el-input v-model="channelForm.config_data.corp_id" />
+                  </el-form-item>
+                  <el-form-item label="Agent ID">
+                    <el-input v-model="channelForm.config_data.agent_id" />
+                  </el-form-item>
+                  <el-form-item label="Secret">
+                    <el-input v-model="channelForm.config_data.secret" type="password" show-password />
+                  </el-form-item>
+                </div>
+
+                <div v-else-if="channelForm.channel_type === 'SMS'">
+                  <el-form-item label="短信服务商">
+                    <el-select v-model="channelForm.config_data.provider">
+                      <el-option label="阿里云" value="aliyun" />
+                      <el-option label="腾讯云" value="tencent" />
+                    </el-select>
+                  </el-form-item>
+                  <el-form-item label="Access Key">
+                    <el-input v-model="channelForm.config_data.access_key" />
+                  </el-form-item>
+                  <el-form-item label="Secret Key">
+                    <el-input v-model="channelForm.config_data.secret_key" type="password" show-password />
+                  </el-form-item>
+                </div>
+
+                <div v-else-if="channelForm.channel_type === 'EMAIL'">
+                  <el-form-item label="SMTP服务器">
+                    <el-input v-model="channelForm.config_data.smtp_host" placeholder="smtp.example.com" />
+                  </el-form-item>
+                  <el-form-item label="端口">
+                    <el-input-number v-model="channelForm.config_data.smtp_port" :min="1" :max="65535" />
+                  </el-form-item>
+                  <el-form-item label="发件邮箱">
+                    <el-input v-model="channelForm.config_data.from_email" />
+                  </el-form-item>
+                  <el-form-item label="邮箱密码">
+                    <el-input v-model="channelForm.config_data.password" type="password" show-password />
+                  </el-form-item>
+                </div>
+
+                <el-alert 
+                  v-else 
+                  title="该渠道暂无专属配置项" 
+                  type="info" 
+                  :closable="false"
+                />
+              </el-form>
+              <template #footer>
+                <el-button @click="showChannelDialog = false">取消</el-button>
+                <el-button type="primary" @click="saveChannelConfig">保存配置</el-button>
+              </template>
+            </el-dialog>
           </div>
 
           <!-- 群机器人配置 -->
@@ -357,8 +544,28 @@
               style="margin-bottom: 20px;"
             />
 
+            <!-- 数据源管理入口 -->
+            <el-card class="datasource-entry" style="margin-bottom: 20px;">
+              <template #header>
+                <span>📚 数据源管理</span>
+              </template>
+              <div style="display: flex; justify-content: space-between; align-items: center;">
+                <div>
+                  <p style="margin: 0 0 8px 0; color: #666;">
+                    管理多个远程数据库连接配置,支持MySQL、PostgreSQL、SQL Server
+                  </p>
+                  <p style="margin: 0; color: #999; font-size: 13px;">
+                    如果您需要对接多个客户的项目库,请在数据源管理中添加多个数据库连接
+                  </p>
+                </div>
+                <el-button type="primary" size="large" @click="openDataSourceManager">
+                  管理数据源 →
+                </el-button>
+              </div>
+            </el-card>
+
             <!-- 同步配置 -->
-            <el-card class="config-group">
+            <el-card class="config-group">`}
               <template #header>
                 <div style="display: flex; justify-content: space-between; align-items: center;">
                   <span>⚙️ 同步配置</span>
@@ -567,7 +774,8 @@ import { ref, onMounted, computed } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { 
   Setting, ChatLineRound, Operation, Lock, User, Document, RefreshRight,
-  Plus, Setting as SettingIcon 
+  Plus, Setting as SettingIcon, Message, CircleCheck, CircleClose, 
+  Refresh, Connection
 } from '@element-plus/icons-vue'
 import axios from 'axios'
 
@@ -580,8 +788,13 @@ const saving = ref(false)
 
 // 配置数据
 const configGroups = ref([])
-const callbackUrl = ref('')
+const callbackUrls = ref({
+  wework_callback_url: '',
+  wechat_official_url: ''
+})
 const webhooks = ref([])
+const channels = ref([])
+const channelStats = ref({})
 const workflowTemplates = ref([])
 const activeWorkflow = ref('')
 const users = ref([])
@@ -592,8 +805,10 @@ const logsPagination = ref(null)
 
 // 对话框
 const showWebhookDialog = ref(false)
+const showChannelDialog = ref(false)
 const showUserDialog = ref(false)
 const editingWebhook = ref(null)
+const currentChannel = ref(null)
 const editingUser = ref(null)
 
 // 表单数据
@@ -613,6 +828,13 @@ const userForm = ref({
   phone: '',
   role_id: null,
   is_active: true
+})
+
+const channelForm = ref({
+  channel_name: '',
+  channel_type: '',
+  is_enabled: true,
+  config_data: {}
 })
 
 // 项目同步配置
@@ -645,6 +867,7 @@ const handleMenuSelect = (index) => {
   activeMenu.value = index
   const titles = {
     overview: '配置概览',
+    channels: '消息渠道配置',
     webhooks: '群机器人配置',
     workflows: '业务流程模板',
     permissions: '权限管理',
@@ -655,7 +878,8 @@ const handleMenuSelect = (index) => {
   pageTitle.value = titles[index] || '配置中心'
   
   // 加载对应数据
-  if (index === 'webhooks') loadWebhooks()
+  if (index === 'channels') loadChannels()
+  else if (index === 'webhooks') loadWebhooks()
   else if (index === 'workflows') loadWorkflows()
   else if (index === 'users') loadUsers()
   else if (index === 'permissions') loadRolesAndPermissions()
@@ -671,7 +895,10 @@ const loadConfigOverview = async () => {
     
     // 获取回调URL
     const callbackResponse = await axios.get(`${API_BASE}/api/admin/config-center/callback-url`)
-    callbackUrl.value = callbackResponse.data.callback_url
+    callbackUrls.value = {
+      wework_callback_url: callbackResponse.data.wework_callback_url || '',
+      wechat_official_url: callbackResponse.data.wechat_official_url || ''
+    }
   } catch (error) {
     ElMessage.error('加载配置失败')
   }
@@ -710,6 +937,94 @@ const saveAllConfigs = async () => {
 const copyToClipboard = (text) => {
   navigator.clipboard.writeText(text)
   ElMessage.success('已复制到剪贴板')
+}
+
+// 消息渠道管理
+const loadChannels = async () => {
+  try {
+    const [channelsRes, statsRes] = await Promise.all([
+      axios.get(`${API_BASE}/api/channel-config/list`),
+      axios.get(`${API_BASE}/api/channel-config/stats/summary`)
+    ])
+    channels.value = channelsRes.data.channels
+    channelStats.value = statsRes.data
+  } catch (error) {
+    ElMessage.error('加载渠道配置失败: ' + (error.response?.data?.detail || error.message))
+  }
+}
+
+const refreshChannels = () => {
+  loadChannels()
+  ElMessage.success('已刷新渠道列表')
+}
+
+const configureChannel = (channel) => {
+  currentChannel.value = channel
+  channelForm.value = {
+    channel_name: channel.channel_name,
+    channel_type: channel.channel_type,
+    is_enabled: channel.is_enabled,
+    config_data: channel.config_data || {}
+  }
+  showChannelDialog.value = true
+}
+
+const saveChannelConfig = async () => {
+  try {
+    await axios.put(
+      `${API_BASE}/api/channel-config/${currentChannel.value.id}`,
+      channelForm.value
+    )
+    ElMessage.success('渠道配置保存成功')
+    showChannelDialog.value = false
+    loadChannels()
+  } catch (error) {
+    ElMessage.error('保存失败: ' + (error.response?.data?.detail || error.message))
+  }
+}
+
+const toggleChannel = async (channel) => {
+  try {
+    await axios.put(
+      `${API_BASE}/api/channel-config/${channel.id}`,
+      { is_enabled: channel.is_enabled }
+    )
+    ElMessage.success(channel.is_enabled ? '渠道已启用' : '渠道已禁用')
+  } catch (error) {
+    channel.is_enabled = !channel.is_enabled
+    ElMessage.error('操作失败')
+  }
+}
+
+const testChannel = async (channel) => {
+  ElMessage.info(`测试发送功能即将推出: ${channel.channel_name}`)
+}
+
+const getChannelTagType = (type) => {
+  const types = {
+    'GROUP_BOT': 'success',
+    'AI': 'primary',
+    'WORK_WECHAT': 'warning',
+    'WECHAT': 'info',
+    'SMS': 'danger',
+    'EMAIL': ''
+  }
+  return types[type] || 'info'
+}
+
+const isChannelConfigured = (channel) => {
+  if (!channel.config_data) return false
+  const data = channel.config_data
+  if (channel.channel_type === 'GROUP_BOT') {
+    return !!data.webhook_url
+  } else if (channel.channel_type === 'WORK_WECHAT') {
+    return !!data.corp_id && !!data.agent_id && !!data.secret
+  } else if (channel.channel_type === 'SMS') {
+    return !!data.provider && !!data.access_key
+  } else if (channel.channel_type === 'EMAIL') {
+    return !!data.smtp_host && !!data.from_email
+  }
+  return Object.keys(data).length > 0
 }
 
 // Webhook管理
@@ -1035,6 +1350,11 @@ const handleSyncHistoryPageChange = (page) => {
 // 打开Cron表达式生成器
 const openCronGenerator = () => {
   window.open('http://cron.ciding.cc/', '_blank')
+}
+
+// 打开数据源管理器
+const openDataSourceManager = () => {
+  window.open('http://localhost:3000/datasource', '_blank')
 }
 
 // 图标组件

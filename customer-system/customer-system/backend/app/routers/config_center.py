@@ -230,11 +230,14 @@ async def get_callback_url(request: Request):
     自动生成回调URL（根据当前请求域名）
     """
     base_url = str(request.base_url).rstrip('/')
-    callback_url = f"{base_url}/api/wechat/callback"
+    wework_callback_url = f"{base_url}/api/wechat/callback"
+    wechat_official_url = f"{base_url}/api/wechat/official"
     
     return {
-        "callback_url": callback_url,
-        "description": "将此URL配置到企业微信应用的接收消息服务器URL"
+        "wework_callback_url": wework_callback_url,
+        "wework_description": "将此URL配置到企业微信应用的接收消息服务器URL",
+        "wechat_official_url": wechat_official_url,
+        "wechat_official_description": "将此URL配置到微信公众平台的服务器地址(URL)"
     }
 
 

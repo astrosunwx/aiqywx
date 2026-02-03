@@ -1,56 +1,51 @@
 # -*- coding: utf-8 -*-
-"""
-消息模板管理 API
-"""
+"""Message Template Management API"""
 
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from typing import List, Optional, Dict, Any
-from sqlalchemy.ext.asyncio import AsyncSession
 import sqlite3
+import os
+import json
 
-from app.database import get_db
+router = APIRouter(prefix="/api/template", tags=["Message Templates"])
 
-router = APIRouter(prefix="/api/template", tags=["消息模板"])
+# Database path - using absolute path
+DB_PATH = r'G:\aiqywx\customer-system\customer-system\backend\customer_system.db'
 
-
-# ========== Models ==========
-
+# Models matching actual database schema
 class TemplateResponse(BaseModel):
     id: int
     name: str
-    description: Optional[str] = None
-    channel_type: str
-    send_mode: str
+    module_type: str
+    category: Optional[str] = None
     content: str
+    content_type: Optional[str] = None
+    channel_config_id: Optional[int] = None
+    target_config: Optional[str] = None
+    push_mode: Optional[str] = None
+    keywords: Optional[List[str]] = None
     schedule_time: Optional[str] = None
-    schedule_frequency: Optional[str] = None
-    trigger_keywords: Optional[List[str]] = None
-    target_groups: Optional[List[str]] = None
-    is_active: bool
+    repeat_type: Optional[str] = None
+    targets: Optional[List[str]] = None
+    is_enabled: bool
 
 class TemplateListResponse(BaseModel):
     templates: List[TemplateResponse]
     total: int
 
-# ========== API Endpoints ==========
-
+# API Endpoints
 @router.get("/list", response_model=TemplateListResponse)
-async def list_templates(
-    page: int = 1,
-    page_size: int = 20
-):
-    """查询模板列表"""
+async def list_templates(page: int = 1, page_size: int = 20):
+    """List all templates"""
     try:
-        conn = sqlite3.connect('./customer_system.db')
+        conn = sqlite3.connect(DB_PATH)
         conn.row_factory = sqlite3.Row
         cursor = conn.cursor()
         
-        # 查询总数
         cursor.execute("SELECT COUNT(*) as count FROM message_templates")
         total = cursor.fetchone()['count']
         
-        # 查询列表
         offset = (page - 1) * page_size
         cursor.execute("""
             SELECT * FROM message_templates
@@ -60,19 +55,21 @@ async def list_templates(
         
         templates = []
         for row in cursor.fetchall():
-            import json
             templates.append({
                 'id': row['id'],
                 'name': row['name'],
-                'description': row['description'],
-                'channel_type': row['channel_type'],
-                'send_mode': row['send_mode'],
+                'module_type': row['module_type'],
+                'category': row['category'],
                 'content': row['content'],
+                'content_type': row['content_type'],
+                'channel_config_id': row['channel_config_id'],
+                'target_config': row['target_config'],
+                'push_mode': row['push_mode'],
+                'keywords': json.loads(row['keywords']) if row['keywords'] else [],
                 'schedule_time': row['schedule_time'],
-                'schedule_frequency': row['schedule_frequency'],
-                'trigger_keywords': json.loads(row['trigger_keywords']) if row['trigger_keywords'] else [],
-                'target_groups': json.loads(row['target_groups']) if row['target_groups'] else [],
-                'is_active': bool(row['is_active'])
+                'repeat_type': row['repeat_type'],
+                'targets': json.loads(row['targets']) if row['targets'] else [],
+                'is_enabled': bool(row['is_enabled'])
             })
         
         conn.close()
@@ -80,12 +77,11 @@ async def list_templates(
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-
 @router.get("/{template_id}")
 async def get_template(template_id: int):
-    """获取模板详情"""
+    """Get template by ID"""
     try:
-        conn = sqlite3.connect('./customer_system.db')
+        conn = sqlite3.connect(DB_PATH)
         conn.row_factory = sqlite3.Row
         cursor = conn.cursor()
         
@@ -93,21 +89,23 @@ async def get_template(template_id: int):
         row = cursor.fetchone()
         
         if not row:
-            raise HTTPException(status_code=404, detail="模板不存在")
+            raise HTTPException(status_code=404, detail="Template not found")
         
-        import json
         template = {
             'id': row['id'],
             'name': row['name'],
-            'description': row['description'],
-            'channel_type': row['channel_type'],
-            'send_mode': row['send_mode'],
+            'module_type': row['module_type'],
+            'category': row['category'],
             'content': row['content'],
+            'content_type': row['content_type'],
+            'channel_config_id': row['channel_config_id'],
+            'target_config': row['target_config'],
+            'push_mode': row['push_mode'],
+            'keywords': json.loads(row['keywords']) if row['keywords'] else [],
             'schedule_time': row['schedule_time'],
-            'schedule_frequency': row['schedule_frequency'],
-            'trigger_keywords': json.loads(row['trigger_keywords']) if row['trigger_keywords'] else [],
-            'target_groups': json.loads(row['target_groups']) if row['target_groups'] else [],
-            'is_active': bool(row['is_active'])
+            'repeat_type': row['repeat_type'],
+            'targets': json.loads(row['targets']) if row['targets'] else [],
+            'is_enabled': bool(row['is_enabled'])
         }
         
         conn.close()
@@ -117,12 +115,11 @@ async def get_template(template_id: int):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-
 @router.get("/preview/{template_id}")
 async def preview_template(template_id: int):
-    """预览模板"""
+    """Preview template with sample data"""
     try:
-        conn = sqlite3.connect('./customer_system.db')
+        conn = sqlite3.connect(DB_PATH)
         conn.row_factory = sqlite3.Row
         cursor = conn.cursor()
         
@@ -130,14 +127,13 @@ async def preview_template(template_id: int):
         row = cursor.fetchone()
         
         if not row:
-            raise HTTPException(status_code=404, detail="模板不存在")
+            raise HTTPException(status_code=404, detail="Template not found")
         
-        # 简单的变量替换预览
         from datetime import datetime
         content = row['content']
         content = content.replace('{current_date}', datetime.now().strftime('%Y-%m-%d'))
         content = content.replace('{pending_count}', '5')
-        content = content.replace('{project_name}', '示例项目')
+        content = content.replace('{project_name}', 'Sample Project')
         
         conn.close()
         return {"preview_content": content}
@@ -146,16 +142,11 @@ async def preview_template(template_id: int):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-
 @router.post("/test-send")
-async def test_send(
-    template_id: int,
-    variables: Dict[str, Any] = {},
-    test_recipients: List[str] = []
-):
-    """测试发送"""
+async def test_send(template_id: int, variables: Dict[str, Any] = {}, test_recipients: List[str] = []):
+    """Test send message"""
     return {
         "success": True,
-        "message": "测试发送功能需要后续实现",
+        "message": "Test send feature will be implemented",
         "template_id": template_id
     }

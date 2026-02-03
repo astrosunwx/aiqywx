@@ -3,9 +3,10 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.routers import (
     ai_router, wechat, admin, view, sidebar, auto_notify, 
     customer_transfer, wework_callback, after_sales_router, prospect_router,
-    service_request_router, config_center, messages_router, ai_model_router
+    service_request_router, config_center, messages_router, ai_model_router,
+    datasource
 )
-from app.api import template_management
+from app.api import template_management, channel_config
 import os
 
 app = FastAPI(
@@ -27,9 +28,11 @@ app.add_middleware(
 app.include_router(ai_router.router, tags=["AI智能路由"])
 app.include_router(ai_model_router.router, tags=["AI模型配置"])
 app.include_router(template_management.router, tags=["消息模板管理"])
+app.include_router(channel_config.router, tags=["渠道配置管理"])
 app.include_router(wechat.router, tags=["企业微信"])
 app.include_router(admin.router, tags=["管理后台"])
 app.include_router(config_center.router, tags=["配置中心"])
+app.include_router(datasource.router, tags=["数据源管理"])
 app.include_router(messages_router.router, tags=["消息处理"])
 app.include_router(view.router, tags=["页面视图"])
 app.include_router(sidebar.router, tags=["聊天工具栏侧边栏"])
