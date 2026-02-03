@@ -1,0 +1,385 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>发送项目进度</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 20px;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 500px;
+            margin: 0 auto;
+        }
+
+        .header {
+            text-align: center;
+            color: white;
+            margin-bottom: 30px;
+        }
+
+        .header h1 {
+            font-size: 24px;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            font-size: 14px;
+            opacity: 0.9;
+        }
+
+        .customer-info {
+            background: white;
+            border-radius: 12px;
+            padding: 15px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+        }
+
+        .customer-info h3 {
+            font-size: 16px;
+            color: #333;
+            margin-bottom: 5px;
+        }
+
+        .customer-info p {
+            font-size: 14px;
+            color: #666;
+        }
+
+        .project-list {
+            margin-bottom: 20px;
+        }
+
+        .project-card {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 15px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+            transition: transform 0.2s, box-shadow 0.2s;
+            cursor: pointer;
+            position: relative;
+        }
+
+        .project-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
+        }
+
+        .project-card.selected {
+            border: 2px solid #667eea;
+            background: #f8f9ff;
+        }
+
+        .project-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 12px;
+        }
+
+        .project-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: #333;
+            flex: 1;
+        }
+
+        .progress-badge {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: 600;
+            margin-left: 10px;
+        }
+
+        .project-details {
+            margin-top: 10px;
+        }
+
+        .detail-row {
+            display: flex;
+            align-items: center;
+            margin-bottom: 8px;
+            font-size: 14px;
+            color: #666;
+        }
+
+        .detail-row .icon {
+            margin-right: 8px;
+            font-size: 16px;
+        }
+
+        .progress-bar-container {
+            width: 100%;
+            height: 8px;
+            background: #e0e0e0;
+            border-radius: 4px;
+            overflow: hidden;
+            margin-top: 12px;
+        }
+
+        .progress-bar {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+            transition: width 0.3s ease;
+        }
+
+        .send-button {
+            width: 100%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 15px;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+            transition: all 0.3s;
+        }
+
+        .send-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+        }
+
+        .send-button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 40px;
+            color: white;
+        }
+
+        .empty-state .icon {
+            font-size: 48px;
+            margin-bottom: 20px;
+        }
+
+        .toast {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: white;
+            padding: 15px 25px;
+            border-radius: 8px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+            display: none;
+            z-index: 1000;
+        }
+
+        .toast.show {
+            display: block;
+            animation: slideDown 0.3s ease;
+        }
+
+        @keyframes slideDown {
+            from {
+                opacity: 0;
+                transform: translateX(-50%) translateY(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(-50%) translateY(0);
+            }
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 3px 10px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+            margin-left: 8px;
+        }
+
+        .status-processing {
+            background: #e3f2fd;
+            color: #1976d2;
+        }
+
+        .status-resolved {
+            background: #e8f5e9;
+            color: #388e3c;
+        }
+
+        .status-pending {
+            background: #fff3e0;
+            color: #f57c00;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📊 发送项目进度</h1>
+            <p>选择要发送的项目，一键分享给客户</p>
+        </div>
+
+        <div class="customer-info">
+            <h3>👤 {{ customer_name }}</h3>
+            <p>即将接收项目进度通知</p>
+        </div>
+
+        {% if projects %}
+        <div class="project-list">
+            {% for project in projects %}
+            <div class="project-card" data-project-id="{{ project.id }}" onclick="selectProject({{ project.id }})">
+                <div class="project-header">
+                    <div class="project-title">{{ project.title }}</div>
+                    <div class="progress-badge">{{ project.progress }}%</div>
+                </div>
+
+                <div class="project-details">
+                    <div class="detail-row">
+                        <span class="icon">📋</span>
+                        <span>状态: {{ project.status }}
+                            {% if project.status == 'processing' %}
+                            <span class="status-badge status-processing">进行中</span>
+                            {% elif project.status == 'resolved' %}
+                            <span class="status-badge status-resolved">已完成</span>
+                            {% else %}
+                            <span class="status-badge status-pending">待处理</span>
+                            {% endif %}
+                        </span>
+                    </div>
+
+                    {% if project.team_members %}
+                    <div class="detail-row">
+                        <span class="icon">👥</span>
+                        <span>负责团队: {{ ', '.join(project.team_members) }}</span>
+                    </div>
+                    {% endif %}
+
+                    {% if project.assigned_to_name %}
+                    <div class="detail-row">
+                        <span class="icon">👤</span>
+                        <span>负责人: {{ project.assigned_to_name }}</span>
+                    </div>
+                    {% endif %}
+                </div>
+
+                <div class="progress-bar-container">
+                    <div class="progress-bar" style="width: {{ project.progress }}%"></div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+
+        <button class="send-button" id="sendButton" disabled onclick="sendProgress()">
+            选择项目后点击发送
+        </button>
+        {% else %}
+        <div class="empty-state">
+            <div class="icon">📭</div>
+            <h3>暂无项目</h3>
+            <p>该客户还没有关联的项目</p>
+        </div>
+        {% endif %}
+    </div>
+
+    <div class="toast" id="toast"></div>
+
+    <script>
+        let selectedProjectId = null;
+        const userid = "{{ userid }}";
+        const externalUserid = "{{ external_userid }}";
+
+        function selectProject(projectId) {
+            // 移除所有选中状态
+            document.querySelectorAll('.project-card').forEach(card => {
+                card.classList.remove('selected');
+            });
+
+            // 添加选中状态
+            const selectedCard = document.querySelector(`[data-project-id="${projectId}"]`);
+            selectedCard.classList.add('selected');
+
+            selectedProjectId = projectId;
+
+            // 启用发送按钮
+            const sendButton = document.getElementById('sendButton');
+            sendButton.disabled = false;
+            sendButton.textContent = '📤 发送项目进度给客户';
+        }
+
+        async function sendProgress() {
+            if (!selectedProjectId) {
+                showToast('请先选择一个项目', 'error');
+                return;
+            }
+
+            const sendButton = document.getElementById('sendButton');
+            sendButton.disabled = true;
+            sendButton.textContent = '发送中...';
+
+            try {
+                const response = await fetch('/sidebar/send-progress', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        project_id: selectedProjectId,
+                        userid: userid,
+                        external_userid: externalUserid
+                    })
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    showToast('✅ 项目进度已发送给客户！', 'success');
+                    sendButton.textContent = '✓ 发送成功';
+
+                    // 2秒后关闭侧边栏
+                    setTimeout(() => {
+                        window.close();
+                    }, 2000);
+                } else {
+                    showToast('❌ 发送失败：' + result.message, 'error');
+                    sendButton.disabled = false;
+                    sendButton.textContent = '重新发送';
+                }
+            } catch (error) {
+                showToast('❌ 网络错误：' + error.message, 'error');
+                sendButton.disabled = false;
+                sendButton.textContent = '重新发送';
+            }
+        }
+
+        function showToast(message, type) {
+            const toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.style.background = type === 'success' ? '#4caf50' : '#f44336';
+            toast.style.color = 'white';
+            toast.classList.add('show');
+
+            setTimeout(() => {
+                toast.classList.remove('show');
+            }, 3000);
+        }
+    </script>
+</body>
+</html>

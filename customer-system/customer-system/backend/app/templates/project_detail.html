@@ -1,0 +1,410 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ project.name }} - 项目详情</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            overflow: hidden;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            position: relative;
+        }
+        
+        .header h1 {
+            font-size: 28px;
+            margin-bottom: 10px;
+        }
+        
+        .status-badge {
+            display: inline-block;
+            padding: 6px 16px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: 500;
+            background: rgba(255, 255, 255, 0.2);
+            backdrop-filter: blur(10px);
+        }
+        
+        .update-indicator {
+            position: absolute;
+            top: 30px;
+            right: 30px;
+            font-size: 12px;
+            opacity: 0.8;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .pulse {
+            width: 8px;
+            height: 8px;
+            background: #4ade80;
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        
+        .content {
+            padding: 30px;
+        }
+        
+        .section {
+            margin-bottom: 30px;
+        }
+        
+        .section-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #f0f0f0;
+        }
+        
+        .info-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+        }
+        
+        .info-item {
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .info-label {
+            font-size: 13px;
+            color: #999;
+            margin-bottom: 6px;
+        }
+        
+        .info-value {
+            font-size: 16px;
+            color: #333;
+            font-weight: 500;
+        }
+        
+        .progress-container {
+            background: #f7f7f7;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .progress-bar {
+            width: 100%;
+            height: 12px;
+            background: #e0e0e0;
+            border-radius: 6px;
+            overflow: hidden;
+            margin-bottom: 10px;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+            transition: width 0.5s ease;
+            border-radius: 6px;
+        }
+        
+        .progress-text {
+            text-align: center;
+            font-size: 24px;
+            font-weight: 700;
+            color: #667eea;
+        }
+        
+        .team-members {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        
+        .member-tag {
+            background: #f0f0f0;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 14px;
+            color: #666;
+        }
+        
+        .description {
+            line-height: 1.8;
+            color: #666;
+            padding: 15px;
+            background: #f9f9f9;
+            border-radius: 8px;
+            border-left: 4px solid #667eea;
+        }
+        
+        .footer {
+            padding: 20px 30px;
+            background: #f7f7f7;
+            border-top: 1px solid #e0e0e0;
+            font-size: 12px;
+            color: #999;
+            text-align: center;
+        }
+        
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+        }
+        
+        .loading-spinner {
+            width: 50px;
+            height: 50px;
+            border: 4px solid rgba(255, 255, 255, 0.3);
+            border-top-color: white;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="loading-overlay" id="loadingOverlay">
+        <div class="loading-spinner"></div>
+    </div>
+    
+    <div class="container">
+        <div class="header">
+            <div class="update-indicator">
+                <span class="pulse"></span>
+                <span id="lastUpdateTime">实时同步</span>
+            </div>
+            <h1>{{ project.name }}</h1>
+            <span class="status-badge" id="statusBadge">{{ project.status }}</span>
+        </div>
+        
+        <div class="content">
+            <!-- 进度展示 -->
+            <div class="progress-container">
+                <div class="progress-bar">
+                    <div class="progress-fill" id="progressFill" style="width: {{ project.progress }}%"></div>
+                </div>
+                <div class="progress-text" id="progressText">{{ project.progress }}%</div>
+            </div>
+            
+            <!-- 基本信息 -->
+            <div class="section">
+                <h2 class="section-title">📋 基本信息</h2>
+                <div class="info-grid">
+                    <div class="info-item">
+                        <span class="info-label">项目类型</span>
+                        <span class="info-value">{{ project.type }}</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">项目金额</span>
+                        <span class="info-value">
+                            {% if project.amount %}
+                                ¥{{ "{:,.2f}".format(project.amount) }}
+                            {% else %}
+                                待定
+                            {% endif %}
+                        </span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">开始时间</span>
+                        <span class="info-value">{{ project.start_date or '未设置' }}</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">预计结束</span>
+                        <span class="info-value">{{ project.end_date or '未设置' }}</span>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 客户信息 -->
+            {% if project.customer %}
+            <div class="section">
+                <h2 class="section-title">👤 客户信息</h2>
+                <div class="info-grid">
+                    <div class="info-item">
+                        <span class="info-label">客户姓名</span>
+                        <span class="info-value">{{ project.customer.name }}</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">公司名称</span>
+                        <span class="info-value">{{ project.customer.company or '未填写' }}</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">联系电话</span>
+                        <span class="info-value">{{ project.customer.phone or '未填写' }}</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">电子邮箱</span>
+                        <span class="info-value">{{ project.customer.email or '未填写' }}</span>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+            
+            <!-- 项目描述 -->
+            {% if project.description %}
+            <div class="section">
+                <h2 class="section-title">📝 项目描述</h2>
+                <div class="description">{{ project.description }}</div>
+            </div>
+            {% endif %}
+            
+            <!-- 技术栈 -->
+            {% if project.technical_stack %}
+            <div class="section">
+                <h2 class="section-title">🛠️ 技术栈</h2>
+                <div class="description">{{ project.technical_stack }}</div>
+            </div>
+            {% endif %}
+            
+            <!-- 团队成员 -->
+            {% if project.team_members %}
+            <div class="section">
+                <h2 class="section-title">👥 团队成员</h2>
+                <div class="team-members" id="teamMembers">
+                    {% for member in project.team_members %}
+                    <span class="member-tag">{{ member }}</span>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
+        </div>
+        
+        <div class="footer">
+            <p>最后更新时间: <span id="updatedAt">{{ project.updated_at }}</span></p>
+            <p style="margin-top: 5px; opacity: 0.6;">
+                🔒 此链接仅供授权用户访问 | 有效期至 {{ project.token_info.expires_at }}
+            </p>
+        </div>
+    </div>
+    
+    <!-- JavaScript: 定时增量更新 -->
+    <script>
+        // 从HTML中获取初始数据
+        const projectData = {
+            id: {{ project.id }},
+            status: '{{ project.status }}',
+            progress: {{ project.progress }},
+            teamMembers: {{ project.team_members | tojson }},
+            updatedAt: '{{ project.updated_at }}'
+        };
+        
+        const token = '{{ token }}';
+        
+        // 定时器配置：30分钟更新一次（单位：毫秒）
+        const UPDATE_INTERVAL = 30 * 60 * 1000;
+        
+        // 增量更新函数
+        async function fetchAndUpdateProgress() {
+            try {
+                const response = await fetch(
+                    `/view/api/project/progress?project_id=${projectData.id}&token=${encodeURIComponent(token)}`
+                );
+                
+                if (!response.ok) {
+                    throw new Error('更新失败');
+                }
+                
+                const result = await response.json();
+                if (result.success) {
+                    const data = result.data;
+                    
+                    // 更新进度条
+                    if (data.progress !== undefined) {
+                        projectData.progress = data.progress;
+                        document.getElementById('progressFill').style.width = data.progress + '%';
+                        document.getElementById('progressText').textContent = data.progress + '%';
+                    }
+                    
+                    // 更新状态标签
+                    if (data.status) {
+                        projectData.status = data.status;
+                        document.getElementById('statusBadge').textContent = data.status;
+                    }
+                    
+                    // 更新团队成员
+                    if (data.team_members && Array.isArray(data.team_members)) {
+                        projectData.teamMembers = data.team_members;
+                        const teamContainer = document.getElementById('teamMembers');
+                        if (teamContainer) {
+                            teamContainer.innerHTML = data.team_members.map(member => 
+                                `<span class="member-tag">${member}</span>`
+                            ).join('');
+                        }
+                    }
+                    
+                    // 更新最后更新时间
+                    if (data.updated_at) {
+                        projectData.updatedAt = data.updated_at;
+                        document.getElementById('updatedAt').textContent = data.updated_at;
+                    }
+                    
+                    // 更新上次更新时间指示器
+                    const now = new Date();
+                    document.getElementById('lastUpdateTime').textContent = 
+                        `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')} 已更新`;
+                    
+                    console.log('✅ 数据更新成功', result.from_cache ? '(来自缓存)' : '(来自数据库)');
+                }
+            } catch (error) {
+                console.error('❌ 数据更新失败:', error);
+                document.getElementById('lastUpdateTime').textContent = '更新失败';
+            }
+        }
+        
+        // 启动定时器
+        console.log(`⏰ 数据更新定时器已启动，每${UPDATE_INTERVAL / 60000}分钟更新一次`);
+        setInterval(fetchAndUpdateProgress, UPDATE_INTERVAL);
+        
+        // 页面加载完成后3秒进行首次静默更新（可选）
+        setTimeout(fetchAndUpdateProgress, 3000);
+        
+        // 监听页面可见性变化，从后台切回前台时立即更新
+        document.addEventListener('visibilitychange', function() {
+            if (!document.hidden) {
+                console.log('📱 页面重新可见，立即更新数据');
+                fetchAndUpdateProgress();
+            }
+        });
+    </script>
+</body>
+</html>
