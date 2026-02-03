@@ -15,13 +15,18 @@ class CacheService:
     def __init__(self):
         """初始化Redis连接"""
         redis_url = os.getenv("REDIS_URL", "redis://localhost:6379/0")
+        # 跳过Redis连接测试，避免启动阻塞
         try:
-            self.redis_client = redis.from_url(redis_url, decode_responses=True)
-            # 测试连接
-            self.redis_client.ping()
-            self.available = True
+            self.redis_client = redis.from_url(
+                redis_url, 
+                decode_responses=True,
+                socket_connect_timeout=0.1,
+                socket_timeout=0.1
+            )
+            self.available = False  # 默认不可用，实际使用时再测试
+            print("⚠️  Redis连接跳过测试，缓存功能暂不可用")
         except Exception as e:
-            print(f"⚠️  Redis连接失败，缓存功能不可用: {e}")
+            print(f"⚠️  Redis初始化失败: {str(e)[:50]}")
             self.redis_client = None
             self.available = False
     

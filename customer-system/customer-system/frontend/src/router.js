@@ -4,6 +4,7 @@ import Reports from './views/Reports.vue'
 import ConfigCenter from './views/ConfigCenter.vue'
 import MessageMonitor from './views/MessageMonitor.vue'
 import MessageManager from './views/MessageManager.vue'
+import TemplateMessageManager from './views/TemplateMessageManager.vue'
 import TemplateManager from './views/TemplateManager.vue'
 import AIModelManager from './views/AIModelManager.vue'
 import ProjectDetail from './views/ProjectDetail.vue'
@@ -41,7 +42,15 @@ const routes = [
     name: 'MessageManager',
     component: MessageManager,
     meta: {
-      title: '消息管理'
+      title: '消息管理（旧版）'
+    }
+  },
+  {
+    path: '/template-messages',
+    name: 'TemplateMessageManager',
+    component: TemplateMessageManager,
+    meta: {
+      title: '消息系统（模板版）'
     }
   },
   {

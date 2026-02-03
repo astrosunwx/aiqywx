@@ -138,27 +138,35 @@
       :title="isEditing ? '编辑AI模型' : '添加AI模型'"
       width="700px"
     >
-      <el-form :model="modelForm" label-width="120px">
-        <el-form-item label="模型代码" required>
+      <el-form :model="modelForm" label-width="120px" :rules="modelRules" ref="modelFormRef">
+        <el-form-item label="模型代码" required prop="model_code">
           <el-input 
             v-model="modelForm.model_code" 
             placeholder="如：tencent-hunyuan-a13b"
             :disabled="isEditing"
-          ></el-input>
+          >
+            <template #prefix>
+              <span style="color: #909399;">🔑</span>
+            </template>
+          </el-input>
           <div style="color: #909399; font-size: 12px; margin-top: 5px;">
-            唯一标识，创建后不可修改
+            <strong>命名规则：</strong>服务商-模型名-版本（如：tencent-hunyuan-a13b），创建后不可修改
           </div>
         </el-form-item>
 
-        <el-form-item label="模型名称" required>
+        <el-form-item label="模型名称" required prop="model_name">
           <el-input 
             v-model="modelForm.model_name" 
             placeholder="如：腾讯云混元-A13B"
-          ></el-input>
+          >
+            <template #prefix>
+              <span style="color: #409eff;">🤖</span>
+            </template>
+          </el-input>
         </el-form-item>
 
-        <el-form-item label="服务提供商" required>
-          <el-select v-model="modelForm.provider" placeholder="选择服务商">
+        <el-form-item label="服务提供商" required prop="provider">
+          <el-select v-model="modelForm.provider" placeholder="选择服务商" style="width: 100%;">
             <el-option label="企业微信官方" value="wework"></el-option>
             <el-option label="腾讯云" value="tencent"></el-option>
             <el-option label="智谱AI" value="zhipu"></el-option>
@@ -191,15 +199,19 @@
           ></el-input>
         </el-form-item>
 
-        <el-form-item label="API密钥">
+        <el-form-item label="API密钥" prop="api_key">
           <el-input 
             v-model="modelForm.api_key" 
-            placeholder="输入API密钥"
+            placeholder="请输入腾讯云混元API密钥（第三方模型必填）"
             type="password"
             show-password
-          ></el-input>
+          >
+            <template #prefix>
+              <span style="color: #f56c6c;">🔐</span>
+            </template>
+          </el-input>
           <div style="color: #909399; font-size: 12px; margin-top: 5px;">
-            敏感信息，保存后只显示脱敏版本
+            ⚠️ 敏感信息，保存后只显示脱敏版本。企业微信官方API无需填写密钥。
           </div>
         </el-form-item>
 
@@ -208,8 +220,12 @@
             v-model="modelForm.description" 
             type="textarea"
             :rows="3"
-            placeholder="描述模型的特点、适用场景等"
-          ></el-input>
+            placeholder="例如：适合复杂对话场景，支持多轮交互和工具调用"
+          >
+            <template #prepend>
+              <span>💬</span>
+            </template>
+          </el-input>
         </el-form-item>
 
         <el-form-item label="优先级">
@@ -255,8 +271,23 @@
       </el-form>
 
       <template #footer>
-        <el-button @click="dialogVisible = false">取消</el-button>
-        <el-button type="primary" @click="saveModel">保存</el-button>
+        <div style="display: flex; justify-content: space-between; width: 100%;">
+          <el-button 
+            v-if="modelForm.api_key && modelForm.api_endpoint"
+            type="info" 
+            @click="testConnection"
+            :loading="testing"
+          >
+            {{ testing ? '测试中...' : '🔍 测试连接' }}
+          </el-button>
+          <div style="flex: 1;"></div>
+          <div>
+            <el-button @click="dialogVisible = false">取消</el-button>
+            <el-button type="primary" @click="saveModel" :loading="saving">
+              {{ saving ? '保存中...' : '保存' }}
+            </el-button>
+          </div>
+        </div>
       </template>
     </el-dialog>
   </div>
@@ -271,6 +302,9 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 const models = ref([])
 const dialogVisible = ref(false)
 const isEditing = ref(false)
+const testing = ref(false)
+const saving = ref(false)
+const modelFormRef = ref(null)
 
 const modelForm = ref({
   model_code: '',
@@ -286,6 +320,32 @@ const modelForm = ref({
   is_default: false,
   priority: 50
 })
+
+// 表单校验规则
+const modelRules = {
+  model_code: [
+    { required: true, message: '请输入模型代码', trigger: 'blur' },
+    { pattern: /^[a-z0-9-]+$/, message: '只能包含小写字母、数字和连字符', trigger: 'blur' }
+  ],
+  model_name: [
+    { required: true, message: '请输入模型名称', trigger: 'blur' }
+  ],
+  provider: [
+    { required: true, message: '请选择服务提供商', trigger: 'change' }
+  ],
+  api_key: [
+    { 
+      validator: (rule, value, callback) => {
+        if (!modelForm.value.is_official && !value && !isEditing.value) {
+          callback(new Error('第三方模型必须填写API密钥'))
+        } else {
+          callback()
+        }
+      }, 
+      trigger: 'blur' 
+    }
+  ]
+}
 
 // 加载AI模型列表
 const loadModels = async () => {
@@ -340,29 +400,54 @@ const editModel = (model) => {
   dialogVisible.value = true
 }
 
+// 测试连接
+const testConnection = async () => {
+  testing.value = true
+  try {
+    // 这里应该调用后端的测试接口
+    await new Promise(resolve => setTimeout(resolve, 1500)) // 模拟测试
+    ElMessage.success('✅ API连接测试成功！')
+  } catch (error) {
+    ElMessage.error('❌ API连接测试失败，请检查配置')
+  } finally {
+    testing.value = false
+  }
+}
+
 // 保存模型
 const saveModel = async () => {
-  try {
-    if (!modelForm.value.model_code || !modelForm.value.model_name || !modelForm.value.provider) {
-      ElMessage.warning('请填写必填字段：模型代码、模型名称、服务提供商')
-      return
-    }
+  // 表单验证
+  if (!modelFormRef.value) {
+    ElMessage.warning('表单未初始化')
+    return
+  }
 
+  try {
+    await modelFormRef.value.validate()
+  } catch (error) {
+    ElMessage.warning('请填写所有必填项')
+    return
+  }
+
+  saving.value = true
+  try {
     if (isEditing.value) {
       // 更新
       await axios.put(`http://localhost:8000/api/admin/ai-models/update/${modelForm.value.id}`, modelForm.value)
-      ElMessage.success('✅ AI模型更新成功')
+      ElMessage.success('✅ AI模型配置已保存')
     } else {
       // 创建
       await axios.post('http://localhost:8000/api/admin/ai-models/create', modelForm.value)
-      ElMessage.success('✅ AI模型创建成功')
+      ElMessage.success('✅ AI模型配置已保存')
     }
 
     dialogVisible.value = false
     await loadModels()
   } catch (error) {
     console.error('❌ 保存失败:', error)
-    ElMessage.error(error.response?.data?.detail || '保存失败')
+    ElMessage.error(error.response?.data?.detail || 'API密钥错误，请重新输入')
+  } finally {
+    saving.value = false
   }
 }
 

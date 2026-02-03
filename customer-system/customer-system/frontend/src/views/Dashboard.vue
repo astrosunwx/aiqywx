@@ -43,20 +43,20 @@
 
       <!-- 消息管理 -->
       <el-col :span="6" v-if="hasPermission('message_send')">
-        <el-card class="nav-card" shadow="hover" @click="navigateTo('/messages')">
+        <el-card class="nav-card" shadow="hover" @click="navigateTo('/template-messages')">
           <div class="nav-icon" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);">
             <i class="el-icon-message" style="font-size: 40px;"></i>
           </div>
-          <h3>📨 消息管理</h3>
-          <p>发送和管理所有消息</p>
+          <h3>📨 消息系统（模板版）</h3>
+          <p>统一消息模板管理</p>
           <ul class="feature-list">
-            <li>发送测试消息</li>
-            <li>查询消息状态</li>
-            <li>链路追踪</li>
-            <li>统计分析</li>
+            <li>📝 模板管理</li>
+            <li>📋 消息记录</li>
+            <li>⚙️ 渠道配置</li>
+            <li>📊 统计分析</li>
           </ul>
           <el-button type="danger" style="width: 100%; margin-top: 10px;">
-            管理消息
+            进入消息系统
           </el-button>
         </el-card>
       </el-col>

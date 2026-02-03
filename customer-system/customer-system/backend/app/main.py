@@ -5,6 +5,7 @@ from app.routers import (
     customer_transfer, wework_callback, after_sales_router, prospect_router,
     service_request_router, config_center, messages_router, ai_model_router
 )
+from app.api import template_management
 import os
 
 app = FastAPI(
@@ -25,6 +26,7 @@ app.add_middleware(
 # 注册路由
 app.include_router(ai_router.router, tags=["AI智能路由"])
 app.include_router(ai_model_router.router, tags=["AI模型配置"])
+app.include_router(template_management.router, tags=["消息模板管理"])
 app.include_router(wechat.router, tags=["企业微信"])
 app.include_router(admin.router, tags=["管理后台"])
 app.include_router(config_center.router, tags=["配置中心"])
