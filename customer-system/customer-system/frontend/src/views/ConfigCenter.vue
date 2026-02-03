@@ -779,7 +779,8 @@ import {
 } from '@element-plus/icons-vue'
 import axios from 'axios'
 
-const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:8000'
+// 开发环境使用空字符串，让Vite代理处理；生产环境使用完整URL
+const API_BASE = import.meta.env.VITE_API_BASE || ''
 
 // 状态管理
 const activeMenu = ref('overview')

@@ -55,6 +55,17 @@ async def list_templates(page: int = 1, page_size: int = 20):
         
         templates = []
         for row in cursor.fetchall():
+            # 安全解析JSON字段
+            try:
+                keywords = json.loads(row['keywords']) if row['keywords'] and row['keywords'] != 'None' else []
+            except:
+                keywords = []
+            
+            try:
+                targets = json.loads(row['targets']) if row['targets'] and row['targets'] != 'None' else []
+            except:
+                targets = []
+            
             templates.append({
                 'id': row['id'],
                 'name': row['name'],
@@ -65,10 +76,10 @@ async def list_templates(page: int = 1, page_size: int = 20):
                 'channel_config_id': row['channel_config_id'],
                 'target_config': row['target_config'],
                 'push_mode': row['push_mode'],
-                'keywords': json.loads(row['keywords']) if row['keywords'] else [],
+                'keywords': keywords,
                 'schedule_time': row['schedule_time'],
                 'repeat_type': row['repeat_type'],
-                'targets': json.loads(row['targets']) if row['targets'] else [],
+                'targets': targets,
                 'is_enabled': bool(row['is_enabled'])
             })
         

@@ -152,8 +152,8 @@ async def get_active_models(db: AsyncSession = Depends(get_db)):
     
     return [
         {
-            "value": model.model_code,
-            "label": model.model_name,
+            "model_code": model.model_code,
+            "model_name": model.model_name,
             "provider": model.provider,
             "is_official": model.is_official,
             "is_default": model.is_default,
